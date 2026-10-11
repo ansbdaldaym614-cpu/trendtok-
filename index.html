@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111">
+<title>TrendTok</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;background:#000;color:#fff;font-family:Arial,Tahoma,sans-serif}
+body{min-height:100vh}.app{width:100%;max-width:520px;margin:auto;background:#000;min-height:100vh;position:relative}
+header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:min(520px,100%);height:58px;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:linear-gradient(#000c,transparent)}
+.logo{font-size:22px;font-weight:900}.tabs{display:flex;gap:16px;font-size:14px}.tabs b{opacity:.55}.tabs .active{opacity:1}
+.feed{height:100vh;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none}.feed::-webkit-scrollbar{display:none}
+.item{height:100vh;position:relative;scroll-snap-align:start;background:#151515;overflow:hidden}
+video{width:100%;height:100%;object-fit:cover;background:#111}.shade{position:absolute;inset:0;background:linear-gradient(transparent 40%,#000b 100%);pointer-events:none}
+.info{position:absolute;bottom:88px;right:14px;left:76px;z-index:3;text-shadow:0 1px 4px #000}
+.user{font-weight:800;margin-bottom:8px}.caption{font-size:15px;line-height:1.5}.tag{color:#ddd}
+.actions{position:absolute;bottom:105px;left:10px;z-index:5;display:flex;flex-direction:column;gap:18px;align-items:center}
+.action{border:0;background:none;color:#fff;font-size:27px;cursor:pointer;text-shadow:0 2px 5px #000}.count{font-size:11px;margin-top:-14px}
+.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);height:66px;background:#000e;backdrop-filter:blur(10px);z-index:20;display:flex;justify-content:space-around;align-items:center}
+.nav{border:0;background:none;color:#fff;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.75}.nav.active{opacity:1}.nav .ico{font-size:22px}.plus{font-size:31px!important}
+.ad{background:linear-gradient(135deg,#1a1a1a,#292929);display:flex;align-items:center;justify-content:center;text-align:center;padding:30px}
+.adbox{border:1px solid #555;border-radius:20px;padding:28px 20px;width:88%;background:#111d}.adlabel{font-size:11px;color:#bbb;margin-bottom:12px}.ad h2{margin:5px 0 10px;font-size:25px}.ad p{color:#ccc}.ad button{border:0;border-radius:25px;padding:12px 28px;font-weight:800;cursor:pointer}
+.modal{position:fixed;inset:0;background:#000b;z-index:50;display:none;align-items:flex-end}.modal.show{display:flex}.sheet{width:min(520px,100%);margin:auto;background:#171717;border-radius:22px 22px 0 0;padding:20px;max-height:85vh;overflow:auto}
+.sheet h2{margin-top:0}.close{float:left;background:none;color:#fff;border:0;font-size:25px}.field{margin:12px 0}.field input,.field textarea{width:100%;background:#0d0d0d;color:#fff;border:1px solid #444;border-radius:12px;padding:13px;font:inherit}.primary{width:100%;border:0;border-radius:13px;padding:14px;font-weight:900;font-size:16px;cursor:pointer}
+.preview{width:100%;max-height:280px;border-radius:14px;margin-top:10px;display:none;background:#000}.empty{height:100vh;display:flex;align-items:center;justify-content:center;color:#aaa}
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:100;background:#fff;color:#000;padding:11px 16px;border-radius:20px;display:none;font-size:13px}
+@media(min-width:521px){body{background:#222}.app{box-shadow:0 0 35px #000}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="logo">TrendTok</div><div class="tabs"><span class="active">لك</span><b>أتابع</b></div></header>
+<main id="feed" class="feed"></main>
+<nav class="bottom">
+<button class="nav active" onclick="showHome()"><span class="ico">⌂</span>لك</button>
+<button class="nav" onclick="toast('قسم اكتشف جاهز للربط بالبحث والهاشتاجات')"><span class="ico">⌕</span>اكتشف</button>
+<button class="nav" onclick="openModal()"><span class="ico plus">＋</span>نشر</button>
+<button class="nav" onclick="toast('الإشعارات ستظهر هنا')"><span class="ico">♡</span>نشاط</button>
+<button class="nav" onclick="toast('الملف الشخصي قيد الربط بالحسابات')"><span class="ico">◉</span>حسابي</button>
+</nav>
+</div>
+
+<div id="modal" class="modal">
+<div class="sheet">
+<button class="close" onclick="closeModal()">×</button>
+<h2>نشر فيديو</h2>
+<div class="field"><input id="videoFile" type="file" accept="video/*"></div>
+<video id="preview" class="preview" controls></video>
+<div class="field"><textarea id="caption" rows="3" placeholder="اكتب وصف الفيديو..."></textarea></div>
+<button class="primary" onclick="publish()">نشر الفيديو</button>
+</div></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const feed=document.getElementById('feed');
+let posts=JSON.parse(localStorage.getItem('trendtok_posts')||'[]');
+let likes=JSON.parse(localStorage.getItem('trendtok_likes')||'{}');
+
+const samples=[
+{type:'sample',user:'TrendTok',caption:'أهلاً بك في TrendTok 🔥 شارك فيديوهاتك واستمتع بالمحتوى القصير.',src:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'},
+{type:'sample',user:'TrendTok',caption:'الفيديو الثاني — التصميم هنا جاهز للعرض على الموبايل.',src:'https://www.w3schools.com/html/mov_bbb.mp4'},
+{type:'ad'},
+{type:'sample',user:'TrendTok',caption:'إعلان الشركات سيظهر هنا لاحقاً بشكل حقيقي وقابل للإدارة.',src:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'}
+];
+
+function render(){
+ feed.innerHTML='';
+ const all=[...samples,...posts.map(p=>({...p,type:'user'}))];
+ all.forEach((p,i)=>{
+  const el=document.createElement('section'); el.className='item';
+  if(p.type==='ad'){el.classList.add('ad');el.innerHTML='<div class="adbox"><div class="adlabel">إعلان</div><h2>مساحة إعلانية</h2><p>هنا سنضع إعلانات الشركات بين كل فيديوهين.</p><button onclick="toast(\\'سيتم ربط نظام الإعلانات من لوحة الإدارة\\')">اعرف المزيد</button></div>';feed.appendChild(el);return;}
+  const key=p.id||('s'+i), count=(likes[key]||0);
+  el.innerHTML=`<video src="${p.src}" playsinline loop preload="metadata"></video>
+  <div class="shade"></div><div class="info"><div class="user">@${esc(p.user||'user')}</div><div class="caption">${esc(p.caption||'')}</div></div>
+  <div class="actions"><button class="action" onclick="like('${key}',this)">♡</button><span class="count">${count}</span><button class="action" onclick="toast('التعليقات ستعمل مع قاعدة البيانات')">◯</button><button class="action" onclick="share()">↗</button></div>`;
+  feed.appendChild(el);
+ });
+ setupVideoObserver();
+}
+function like(k,b){likes[k]=(likes[k]||0)+1;localStorage.setItem('trendtok_likes',JSON.stringify(likes));b.textContent='♥';b.nextElementSibling.textContent=likes[k]}
+function share(){navigator.clipboard?.writeText(location.href);toast('تم نسخ رابط TrendTok')}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function setupVideoObserver(){const vids=document.querySelectorAll('video');const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.play().catch(()=>{});else e.target.pause()}),{threshold:.65});vids.forEach(v=>obs.observe(v))}
+function openModal(){document.getElementById('modal').classList.add('show')}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+document.getElementById('videoFile').onchange=e=>{const f=e.target.files[0];if(f){const p=document.getElementById('preview');p.src=URL.createObjectURL(f);p.style.display='block'}}
+function publish(){
+ const f=document.getElementById('videoFile').files[0], c=document.getElementById('caption').value.trim();
+ if(!f){toast('اختار فيديو أولاً');return}
+ const url=URL.createObjectURL(f);
+ posts.unshift({id:'p'+Date.now(),user:'أنت',caption:c||'فيديو جديد 🔥',src:url});
+ localStorage.setItem('trendtok_posts',JSON.stringify(posts));
+ closeModal();document.getElementById('videoFile').value='';document.getElementById('caption').value='';document.getElementById('preview').style.display='none';render();feed.scrollTo(0,0);toast('تم نشر الفيديو على هذا الجهاز')}
+function showHome(){feed.scrollTo({top:0,behavior:'smooth'})}
+function toast(t){const x=document.getElementById('toast');x.textContent=t;x.style.display='block';clearTimeout(window.tt);window.tt=setTimeout(()=>x.style.display='none',2200)}
+render();
+</script>
+</body></html>
